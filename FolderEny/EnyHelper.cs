@@ -90,7 +90,7 @@ namespace FolderEny
         /// <summary>
         /// 加密文件夹
         /// </summary>
-        public static void EncryptFolder(string folderPath,string pass)
+        public static string EncryptFolder(string folderPath,string pass)
         {
             DirectoryInfo d = new DirectoryInfo(folderPath);
             string selectedpath = d.Parent.FullName + d.Name;
@@ -114,8 +114,8 @@ namespace FolderEny
             else
                 destFolder = d.Parent.FullName + d.Name + enytype;
             d.MoveTo(destFolder);
-
             setFolder(destFolder, true);
+            return destFolder;
         }
         /// <summary>
         /// 解密文件夹

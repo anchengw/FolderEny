@@ -39,18 +39,18 @@ namespace FolderEny
                     {
                         textBox1.Text = SelectFolderDialog.SelectedPath;
                     }                    
-                }
-                else
+                }              
+            }
+            else
+            {
+                OpenFileDialog SelectFileDialog = new OpenFileDialog();
+                SelectFileDialog.InitialDirectory = "";
+                SelectFileDialog.Filter = "*.*";
+                SelectFileDialog.RestoreDirectory = true;
+                SelectFileDialog.Title = "请选择要加密的文件：";
+                if (SelectFileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    OpenFileDialog SelectFileDialog = new OpenFileDialog();
-                    SelectFileDialog.InitialDirectory = "";
-                    SelectFileDialog.Filter = "*.*";
-                    SelectFileDialog.RestoreDirectory = true;
-                    SelectFileDialog.Title = "请选择要加密的文件：";
-                    if (SelectFolderDialog.ShowDialog() == DialogResult.OK)
-                    {
-                        textBox1.Text = SelectFileDialog.FileName;
-                    }
+                    textBox1.Text = SelectFileDialog.FileName;
                 }
             }
         }
@@ -110,18 +110,112 @@ namespace FolderEny
             }
             else
             {
-                EnyHelper.EncryptFolder(textBox1.Text, pwd);
+                string file = EnyHelper.EncryptFolder(textBox1.Text, pwd);
+                listViewAdd(file, radioButton1.Checked);
             }
         }
 
         private void button3_Click(object sender, EventArgs e)
         {
-            string folder = textBox1.Text;
             bool s = checkpassword();
             if (s)
             {
-                EnyHelper.DecryptFolder(folder);
+                EnyHelper.DecryptFolder(textBox1.Text.Trim());
             }
+        }
+        private void listViewAdd(string filename , bool isfolder)
+        {
+
+            if (isfolder)
+            {
+                DirectoryInfo dirinfo = new DirectoryInfo(filename);
+                ListViewItem dirItem = listView1.Items.Add(dirinfo.Name, 2);
+                dirItem.Name = dirinfo.FullName;
+                dirItem.SubItems.Add("");
+                dirItem.SubItems.Add("文件夹");
+                dirItem.SubItems.Add(dirinfo.LastWriteTimeUtc.ToString());
+            }
+            else
+            {
+                FileInfo file = new FileInfo(filename);
+                ListViewItem fileItem = listView1.Items.Add(file.Name);
+                if (file.Extension == ".exe" || file.Extension == "")   //程序文件或无扩展名
+                {
+                    Icon fileIcon = GetSystemIcon.GetIconByFileName(file.FullName);
+                    imageList1.Images.Add(file.Name, fileIcon);
+                    imageList1.Images.Add(file.Name, fileIcon);
+                    fileItem.ImageKey = file.Name;
+                }
+                else    //其它文件
+                {
+                    if (!imageList1.Images.ContainsKey(file.Extension))  //ImageList中不存在此类图标
+                    {
+                        Icon fileIcon = GetSystemIcon.GetIconByFileName(file.FullName);
+                        imageList1.Images.Add(file.Extension, fileIcon);
+                        imageList1.Images.Add(file.Extension, fileIcon);
+                    }
+                    fileItem.ImageKey = file.Extension;
+                }
+                fileItem.Name = file.FullName;
+                fileItem.SubItems.Add(file.Length.ToString() + "字节");
+                fileItem.SubItems.Add(file.Extension);
+                fileItem.SubItems.Add(file.LastWriteTimeUtc.ToString());
+            }
+
+        }
+        //序列化写入文件
+        public void SerializeListViewItems(ListView listView)
+        {
+            string stFilePath = Application.StartupPath.Trim() + "\\fileinfo.dat";
+            FileStream fs = new FileStream(stFilePath, FileMode.OpenOrCreate, FileAccess.Write);
+            StreamWriter sw = new StreamWriter(fs);
+            var serializer = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+            foreach (var item in listView.Items)
+            {
+                using (var ms = new MemoryStream())
+                {
+                    serializer.Serialize(ms, item);
+                    sw.WriteLine(Convert.ToBase64String(ms.ToArray()));
+                }
+            }
+            sw.Flush();
+            sw.Close();
+            fs.Close();
+        }
+        //反序列化读入文件
+        public IEnumerable<ListViewItem> DeserializeListViewItems()
+        {
+            string stFilePath = Application.StartupPath.Trim() + "\\fileinfo.dat";
+            using (StreamReader sr = new StreamReader(stFilePath, Encoding.Default))
+            {
+                String line;
+                var serializer = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                while ((line = sr.ReadLine()) != null)
+                {
+                    using (var ms = new MemoryStream(Convert.FromBase64String(line)))
+                    {
+                        yield return serializer.Deserialize(ms) as ListViewItem;
+                    };
+                }
+            }
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            string stFilePath = Application.StartupPath.Trim() + "\\fileinfo.dat";
+            if (File.Exists(stFilePath))
+            {
+                foreach (var item in DeserializeListViewItems())
+                {
+                    if (item != null)
+                        listView1.Items.Add(item);
+                }
+            }
+        }
+
+        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            SerializeListViewItems(listView1);
         }
     }
 }
