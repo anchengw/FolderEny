@@ -27,10 +27,8 @@ namespace FolderEny
             }
             else
             {
-                MessageBox.Show("密码错误，请重新输入！！", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("密码错误，解密终止！！", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 status = false;
-                textBox1.Clear();
-                textBox1.Focus();
             }
 
         }
